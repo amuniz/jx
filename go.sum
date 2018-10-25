@@ -101,6 +101,8 @@ github.com/go-openapi/spec v0.17.1 h1:ZfZ1w1bBW6QC7EXXz3DXQDlFLCaPo4Nhszx5uOTjT2
 github.com/go-openapi/spec v0.17.1/go.mod h1:XkF/MOi14NmjsfZ8VtAKf8pIlbZzyoTvZsdfssdxcBI=
 github.com/go-openapi/swag v0.17.0 h1:iqrgMg7Q7SvtbWLlltPrkMs0UBJI6oTSs79JFRUi880=
 github.com/go-openapi/swag v0.17.0/go.mod h1:AByQ+nYG6gQg71GINrmuDXCPWdL640yX49/kXLo40Tg=
+github.com/go-semantic-release/semantic-release v1.10.0 h1:+jSzP6FqVxu6kl1+PObt42swTkRA7XzJCjZhk3Dv9ew=
+github.com/go-semantic-release/semantic-release v1.10.0/go.mod h1:S3fQV6P1gp+WBaJg3wAXLrHViwWdM6FbJ4wUP7JmVWc=
 github.com/gobwas/glob v0.2.3 h1:A4xDbljILXROh+kObIiy5kIaPYD8e96x1tgBhUI5J+Y=
 github.com/gobwas/glob v0.2.3/go.mod h1:d3Ez4x06l9bZtSvzIay5+Yzi0fmZzPgnTbPcKjJAkT8=
 github.com/gogo/protobuf v1.1.1 h1:72R+M5VuhED/KujmZVcIquuo8mBgX4oVda//DQb3PXo=

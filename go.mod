@@ -46,6 +46,7 @@ require (
 	github.com/go-ini/ini v1.38.1
 	github.com/go-ole/go-ole v1.2.1
 	github.com/go-openapi/spec v0.17.1 // indirect
+	github.com/go-semantic-release/semantic-release v1.10.0
 	github.com/gobwas/glob v0.2.3
 	github.com/gogo/protobuf v1.1.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b

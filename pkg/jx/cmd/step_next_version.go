@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 
 	"github.com/blang/semver"
+	"github.com/go-semantic-release/semantic-release"
 	version "github.com/hashicorp/go-version"
 	"github.com/jenkins-x/jx/pkg/jx/cmd/templates"
 	"github.com/jenkins-x/jx/pkg/log"
@@ -35,6 +36,7 @@ type StepNextVersionOptions struct {
 	Tag           bool
 	UseGitTagOnly bool
 	NewVersion    string
+	UseSemantic   bool
 	StepOptions
 }
 
@@ -78,6 +80,7 @@ func NewCmdStepNextVersion(f Factory, in terminal.FileReader, out terminal.FileW
 	cmd.Flags().StringVarP(&options.Dir, "dir", "d", "", "the directory to look for files that contain a pom.xml or Makefile with the project version to bump")
 	cmd.Flags().BoolVarP(&options.Tag, "tag", "t", false, "tag and push new version")
 	cmd.Flags().BoolVarP(&options.UseGitTagOnly, "use-git-tag-only", "", false, "only use a git tag so work out new semantic version, else specify filename [pom.xml,package.json,Makefile,Chart.yaml]")
+	cmd.Flags().BoolVarP(&options.UseSemantic, "semantic", "", false, "Generate a new version number based on commit messages (using github.com/go-semantic-release/semantic-release)")
 
 	options.addCommonFlags(cmd)
 	return cmd
@@ -87,7 +90,11 @@ func (o *StepNextVersionOptions) Run() error {
 
 	var err error
 	if o.NewVersion == "" {
-		o.NewVersion, err = o.getNewVersionFromTag()
+		if o.UseSemantic {
+			o.NewVersion, err = o.getNewSemanticVersion()
+		} else {
+			o.NewVersion, err = o.getNewVersionFromTag()
+		}
 		if err != nil {
 			return err
 		}
@@ -336,6 +343,16 @@ func (o *StepNextVersionOptions) getNewVersionFromTag() (string, error) {
 	}
 
 	return fmt.Sprintf("%d.%d.%d", majorVersion, minorVersion, patchVersion), nil
+}
+
+func (o *StepNextVersionOptions) getNewSemanticVersion() (string, error) {
+	commits := adapt(o.Git().gitCmd("", "log")) // []semrel.Commit
+	newVer := semrel.GetNewVersion(commits, release)
+	return "", nil
+}
+
+func adapt(commits []string) []semrel.Commit {
+	return make([]semrel.Commit, 0)
 }
 
 // SetVersion Sets the version...
