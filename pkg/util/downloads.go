@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	"gopkg.in/AlecAivazis/survey.v1"
 	"io"
 	"net/http"
 	"os"
@@ -16,6 +17,8 @@ import (
 	"github.com/blang/semver"
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
+
+	"github.com/jenkins-x/jx/pkg/jx/cmd"
 )
 
 var githubClient *github.Client
@@ -77,9 +80,9 @@ func GetLatestVersionStringFromGitHub(githubOwner, githubRepo string) (string, e
 	return "", fmt.Errorf("Unable to find the latest version for github.com/%s/%s", githubOwner, githubRepo)
 }
 
-func GetLatestTagFromGitHub(githubOwner, githubRepo string) (string, error) {
+func GetLatestTagFromGitHub(githubOwner, githubRepo string, options cmd.CreateOptions) (string, error) {
+	token := os.Getenv("GH_TOKEN")
 	if githubClient == nil {
-		token := os.Getenv("GH_TOKEN")
 		var tc *http.Client
 		if len(token) > 0 {
 			ts := oauth2.StaticTokenSource(
@@ -95,6 +98,33 @@ func GetLatestTagFromGitHub(githubOwner, githubRepo string) (string, error) {
 		resp    *github.Response
 		err     error
 	)
+
+	if len(token) < 0 {
+		// anonymous access, check rate limit
+		limits, response, e := client.RateLimits(context.Background())
+		if e != nil {
+			return "", e
+		}
+		defer response.Body.Close()
+		// 5 (out of 60) seems a reasonable threshold to start asking for a token
+		if limits.GetCore().Remaining < 5 {
+			if options != nil {
+				surveyOpts := survey.WithStdio(options.In, options.Out, options.Err)
+				prompts := &survey.Input{
+					Message: fmt.Sprintf("GitHub API Token:"),
+				}
+				var token string
+				err := survey.AskOne(prompts, &token, nil, surveyOpts)
+				if err != nil {
+					return "", err
+				}
+			} else {
+
+			}
+		}
+
+	}
+
 	release, resp, err = client.Repositories.GetLatestRelease(context.Background(), githubOwner, githubRepo)
 	if err != nil {
 		return "", fmt.Errorf("Unable to get latest version for github.com/%s/%s %v", githubOwner, githubRepo, err)
