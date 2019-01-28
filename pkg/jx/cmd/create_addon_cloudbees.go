@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/jenkins-x/jx/pkg/kube/pki"
 	"gopkg.in/AlecAivazis/survey.v1"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/jenkins-x/jx/pkg/util"
 	"github.com/pkg/errors"
@@ -161,18 +163,11 @@ To register to get your username/password to to: %s
 			return errors.Wrap(err, "ensuring cert-manager is installed")
 		}
 
-		ingressConfig.TLS = true
-		ingressConfig.Issuer = kube.CertmanagerIssuerProd
-		err = kube.CleanCertmanagerResources(client, o.Namespace, ingressConfig)
-		if err != nil {
-			return errors.Wrap(err, "creating cert-manager issuer")
-		}
-
 		values := []string{
 			"sso.create=true",
 			"sso.oidcIssuerUrl=" + dexURL,
 			"sso.domain=" + domain,
-			"sso.certIssuerName=" + ingressConfig.Issuer}
+			"sso.certIssuerName=" + kube.CertmanagerIssuerProd}
 
 		if len(o.SetValues) > 0 {
 			o.SetValues = o.SetValues + "," + strings.Join(values, ",")
@@ -187,6 +182,21 @@ To register to get your username/password to to: %s
 	err = o.CreateAddon("cb")
 	if err != nil {
 		return err
+	}
+
+	if o.Sso {
+		// wait for cert to be issued
+		certName := pki.CertSecretPrefix + "core"
+		log.Infof("Waiting for cert: %s...\n", util.ColorInfo(certName))
+		certMngrClient, err := o.CreateCertManagerClient()
+		if err != nil {
+			return errors.Wrap(err, "creating the cert-manager client")
+		}
+		err = pki.WaitCertificateExists(certMngrClient, certName, o.Namespace, 3*time.Minute)
+		if err != nil {
+			return err // this is already wrapped by the previous call
+		}
+		log.Infof("Ready Cert: %s\n", util.ColorInfo(certName))
 	}
 
 	if o.Basic {
@@ -231,6 +241,8 @@ To register to get your username/password to to: %s
 			return err
 		}
 	}
+
+	log.Infof("Addon installed successfully.\n Run `jx cloudbees` to open the app in a browser\n")
 
 	return nil
 }

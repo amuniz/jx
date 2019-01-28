@@ -3,6 +3,7 @@ package pki
 import (
 	"context"
 	"fmt"
+	"github.com/jenkins-x/jx/pkg/util"
 	"strings"
 	"time"
 
@@ -11,19 +12,19 @@ import (
 	certclient "github.com/jetstack/cert-manager/pkg/client/clientset/versioned"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 )
 
-const certSecretPrefix = "tls-"
+const CertSecretPrefix = "tls-"
 
 // WaitCertificateIssuedReady wait for a certificate issued by cert-manager until is ready or the timeout is reached
 func WaitCertificateIssuedReady(client certclient.Interface, name string, ns string, timeout time.Duration) error {
 	err := wait.PollImmediate(time.Second, timeout, func() (bool, error) {
-		cert, err := client.Certmanager().Certificates(ns).Get(name, metav1.GetOptions{})
+		cert, err := client.CertmanagerV1alpha1().Certificates(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
 			logrus.Warnf("Failed getting certificate %q: %v", name, err)
 			return false, nil
@@ -35,10 +36,25 @@ func WaitCertificateIssuedReady(client certclient.Interface, name string, ns str
 		if !isReady {
 			return false, nil
 		}
+		logrus.Infof("Ready Cert: %s\n", util.ColorInfo(name))
 		return true, nil
 	})
 	if err != nil {
-		return errors.Wrapf(err, "waiting for certificate %q to be ready in namespace %q", name, ns)
+		return errors.Wrapf(err, "waiting for certificate %q to be ready in namespace %q.", name, ns)
+	}
+	return nil
+}
+
+func WaitCertificateExists(client certclient.Interface, name string, ns string, timeout time.Duration) error {
+	err := wait.PollImmediate(time.Second, timeout, func() (bool, error) {
+		_, err := client.CertmanagerV1alpha1().Certificates(ns).Get(name, metav1.GetOptions{})
+		if err != nil {
+			return false, nil
+		}
+		return true, nil
+	})
+	if err != nil {
+		return errors.Wrapf(err, "waiting for certificate %q to be created in namespace %q.", name, ns)
 	}
 	return nil
 }
@@ -63,7 +79,7 @@ func CleanCerts(client kubernetes.Interface, certclient certclient.Interface, ns
 		return errors.Wrapf(err, "listing the secrets in namespace %q", ns)
 	}
 	for _, s := range secrets.Items {
-		if strings.HasPrefix(s.Name, certSecretPrefix) {
+		if strings.HasPrefix(s.Name, CertSecretPrefix) {
 			err := client.CoreV1().Secrets(ns).Delete(s.Name, &metav1.DeleteOptions{})
 			if err != nil {
 				return errors.Wrapf(err, "deleteing the tls secret %s/%s", ns, s.GetName())
@@ -151,7 +167,7 @@ func ToCertificates(services []*v1.Service) []Certificate {
 	result := make([]Certificate, 0)
 	for _, svc := range services {
 		app := kubeservices.ServiceAppName(svc)
-		cert := certSecretPrefix + app
+		cert := CertSecretPrefix + app
 		ns := svc.GetNamespace()
 		result = append(result, Certificate{
 			Name:      cert,
